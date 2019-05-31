@@ -7,7 +7,7 @@
         "ext-json": "*",
         "graphp/graphviz": "0.2.*",
         "nikic/php-parser": "^4.2",
-        "phpdocumentor/graphviz": "^1.0",
+        "phpdocumentor/graphviz": "^2.0@dev",
         "symfony/config": "^4.3",
         "symfony/console": "^4.3",
         "symfony/dependency-injection": "^4.3",
