@@ -5,16 +5,14 @@ declare(strict_types=1);
 namespace Tests\SensioLabs\Deptrac\OutputFormatter;
 
 use PHPUnit\Framework\TestCase;
-use SensioLabs\Deptrac\AstRunner\AstMap;
 use SensioLabs\Deptrac\AstRunner\AstMap\AstInherit;
-use SensioLabs\Deptrac\ClassNameLayerResolverInterface;
-use SensioLabs\Deptrac\Dependency\Result;
-use SensioLabs\Deptrac\DependencyContext;
 use SensioLabs\Deptrac\Dependency\Dependency;
 use SensioLabs\Deptrac\Dependency\InheritDependency;
 use SensioLabs\Deptrac\OutputFormatter\ConsoleOutputFormatter;
 use SensioLabs\Deptrac\OutputFormatter\OutputFormatterInput;
-use SensioLabs\Deptrac\RulesetEngine\RulesetViolation;
+use SensioLabs\Deptrac\RulesetEngine\Context;
+use SensioLabs\Deptrac\RulesetEngine\SkippedViolation;
+use SensioLabs\Deptrac\RulesetEngine\Violation;
 use Symfony\Component\Console\Output\BufferedOutput;
 
 class ConsoleOutputFormatterTest extends TestCase
@@ -28,7 +26,7 @@ class ConsoleOutputFormatterTest extends TestCase
     {
         yield [
             [
-                new RulesetViolation(
+                new Violation(
                     new InheritDependency(
                         'ClassA',
                         'ClassB',
@@ -43,7 +41,6 @@ class ConsoleOutputFormatterTest extends TestCase
                     'LayerB'
                 ),
             ],
-            [],
             '
                 ClassA must not depend on ClassB (LayerA on LayerB)
                 ClassInheritD::6 ->
@@ -58,13 +55,12 @@ class ConsoleOutputFormatterTest extends TestCase
 
         yield [
             [
-                new RulesetViolation(
+                new Violation(
                     new Dependency('OriginalA', 12, 'OriginalB'),
                     'LayerA',
                     'LayerB'
                 ),
             ],
-            [],
             '
                 OriginalA::12 must not depend on OriginalB (LayerA on LayerB)
 
@@ -74,7 +70,6 @@ class ConsoleOutputFormatterTest extends TestCase
 
         yield [
             [],
-            [],
             '
 
                 Found 0 Violations
@@ -83,14 +78,11 @@ class ConsoleOutputFormatterTest extends TestCase
 
         yield [
             [
-                $violation = new RulesetViolation(
+                new SkippedViolation(
                     new Dependency('OriginalA', 12, 'OriginalB'),
                     'LayerA',
                     'LayerB'
                 ),
-            ],
-            [
-                $violation,
             ],
             '[SKIPPED] OriginalA::12 must not depend on OriginalB (LayerA on LayerB)
             Found 0 Violations and 1 Violations skipped
@@ -101,19 +93,18 @@ class ConsoleOutputFormatterTest extends TestCase
     /**
      * @dataProvider basicDataProvider
      */
-    public function testBasic(array $violations, array $skippedViolations, string $expectedOutput): void
+    public function testBasic(array $rules, string $expectedOutput): void
     {
         $output = new BufferedOutput();
 
+        $context = new Context();
+        foreach ($rules as $rule) {
+            $context->add($rule);
+        }
+
         $formatter = new ConsoleOutputFormatter();
         $formatter->finish(
-            new DependencyContext(
-                $this->prophesize(AstMap::class)->reveal(),
-                $this->prophesize(Result::class)->reveal(),
-                $this->prophesize(ClassNameLayerResolverInterface::class)->reveal(),
-                $violations,
-                $skippedViolations
-            ),
+            $context,
             $output,
             new OutputFormatterInput([])
         );
